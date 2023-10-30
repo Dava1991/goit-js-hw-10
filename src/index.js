@@ -1,9 +1,81 @@
-import { fetchBreeds, fetchCatByBreed } from './cat-api';
-const refs = {
-  selectEl: document.querySelector('.breed-select'),
-  loaderEl: document.querySelector('.loader'),
-  errorEl: document.querySelector('.error'),
-  catInfo: document.querySelector('.cat-info'),
-};
-refs.loaderEl.style.display = 'none';
-refs.errorEl.style.display = 'none';
+import SlimSelect from 'slim-select';
+import 'slim-select/dist/slimselect.css';
+import Notiflix from 'notiflix';
+import { fetchBreeds, fetchCatByBreed } from "./js/cat-api";
+
+
+const breedSelect = document.querySelector(".breed-select");
+const loader = document.querySelector(".loader");
+const error = document.querySelector(".error");
+const catInfo = document.querySelector(".cat-info");
+
+hideError();
+
+function displayCatInfo(cat) {
+  catInfo.innerHTML = `
+  <img src="${cat[0].url}" alt="Cat" loading="lazy"/>
+  <div class="text-box">
+  <h2>${cat[0].breeds[0].name}</h2>
+  <p>${cat[0].breeds[0].description}</p>
+  <p><b>Temperament:</b> ${cat[0].breeds[0].temperament}</p>
+  </div>
+`;
+  const textBox = document.querySelector(`.text-box`);
+  catInfo.style.display = "flex";
+  catInfo.style.flexDirection = "row";
+catInfo.style.flexWrap ="wrap"
+  catInfo.style.marginTop = "48px";
+  catInfo.style.gap = "24px";
+  catInfo.style.width = "95vw";
+  catInfo.style.height = "80vh";
+  textBox.style.display = "flex";
+  textBox.style.flexDirection = "column";
+  textBox.style.justifyContent = "start";
+  textBox.style.fontSize = "1.5em";
+}
+
+function hideLoader() {
+loader.style.display = "none";
+}
+
+function showError() {
+  Notiflix.Notify.failure('Oops! Something went wrong! Try reloading the page!');
+}
+
+function hideError() { 
+error.style.display = "none";
+}
+
+fetchBreeds()
+  .then(breeds => {
+  
+    const slimSelect = new SlimSelect({
+      select: breedSelect,
+      data: breeds.map(breed => ({ value: breed.id, text: breed.name })),
+      settings: {
+        alwaysOpen: false,
+        showSearch: true,
+        placeholderText: "Breed",
+        searchPlaceholder: "Find your favorite breed"
+      },
+      events: {
+      error: showError()
+    },
+    });
+
+    breedSelect.addEventListener("change", event => {
+      const selectedBreedId = event.target.value;
+
+      loader.style.display = "block";
+      catInfo.innerHTML = "";
+      error.style.display = "none";
+
+      fetchCatByBreed(selectedBreedId)
+        .then(displayCatInfo)
+        .catch(showError)
+        .finally(hideLoader);
+    });
+
+    hideLoader();
+  })
+  .catch(showError);
