@@ -1,81 +1,112 @@
+import { fetchBreeds, fetchCatByBreed } from './cat-api';
+
 import SlimSelect from 'slim-select';
-import 'slim-select/dist/slimselect.css';
 import Notiflix from 'notiflix';
-import { fetchBreeds, fetchCatByBreed } from "./cat-api";
+import 'slim-select/dist/slimselect.css';
 
+const errorText = document.querySelector('.error');
+errorText.classList.add('visually-hidden');
 
-const breedSelect = document.querySelector(".breed-select");
-const loader = document.querySelector(".loader");
-const error = document.querySelector(".error");
-const catInfo = document.querySelector(".cat-info");
+const breedSelect = document.querySelector('.breed-select');
+const loader = document.querySelector('.loader');
+const catInfo = document.querySelector('.cat-info');
 
-hideError();
-
-function displayCatInfo(cat) {
-  catInfo.innerHTML = `
-  <img src="${cat[0].url}" alt="Cat" loading="lazy"/>
-  <div class="text-box">
-  <h2>${cat[0].breeds[0].name}</h2>
-  <p>${cat[0].breeds[0].description}</p>
-  <p><b>Temperament:</b> ${cat[0].breeds[0].temperament}</p>
-  </div>
-`;
-  const textBox = document.querySelector(`.text-box`);
-  catInfo.style.display = "flex";
-  catInfo.style.flexDirection = "row";
-catInfo.style.flexWrap ="wrap"
-  catInfo.style.marginTop = "48px";
-  catInfo.style.gap = "24px";
-  catInfo.style.width = "95vw";
-  catInfo.style.height = "80vh";
-  textBox.style.display = "flex";
-  textBox.style.flexDirection = "column";
-  textBox.style.justifyContent = "start";
-  textBox.style.fontSize = "1.5em";
-}
-
-function hideLoader() {
-loader.style.display = "none";
-}
-
-function showError() {
-  Notiflix.Notify.failure('Oops! Something went wrong! Try reloading the page!');
-}
-
-function hideError() { 
-error.style.display = "none";
-}
-
-fetchBreeds()
-  .then(breeds => {
-  
-    const slimSelect = new SlimSelect({
-      select: breedSelect,
-      data: breeds.map(breed => ({ value: breed.id, text: breed.name })),
-      settings: {
-        alwaysOpen: false,
-        showSearch: true,
-        placeholderText: "Breed",
-        searchPlaceholder: "Find your favorite breed"
-      },
-      events: {
-      error: showError()
+const select = new SlimSelect({
+  select: breedSelect,
+  settings: {
+    disabled: false,
+    alwaysOpen: false,
+    showSearch: true,
+    searchPlaceholder: 'Search',
+    searchText: 'No Results',
+    searchingText: 'Searching...',
+    searchHighlight: false,
+    closeOnSelect: true,
+    contentLocation: document.body,
+    contentPosition: 'absolute',
+    openPosition: 'auto',
+    placeholderText: 'Select cat breed',
+    allowDeselect: false,
+    hideSelected: false,
+    showOptionTooltips: false,
+  },
+  events: {
+    afterChange: newValue => {
+      const breedId = newValue[0].value;
+      if (breedId.length > 0) {
+        requestStart();
+        removeChildren(catInfo);
+        fetchCatByBreed(breedId)
+          .then(cats => renderCats(cats))
+          .catch(error => handleFetchError(error));
+      } else {
+        catInfo.classList.add('visually-hidden');
+      }
     },
-    });
+  },
+});
 
-    breedSelect.addEventListener("change", event => {
-      const selectedBreedId = event.target.value;
+document.addEventListener('DOMContentLoaded', () => {
+  requestStart();
+  fetchBreeds()
+    .then(breeds => renderBreeds(breeds))
+    .catch(error => handleFetchError(error));
+});
 
-      loader.style.display = "block";
-      catInfo.innerHTML = "";
-      error.style.display = "none";
+const renderBreeds = cats => {
+  const arrSelected = [
+    { text: '', placeholder: true },
+    ...cats.map(cat => ({ text: cat.name, value: cat.id })),
+  ];
+  select.setData(arrSelected);
+  requestFinish();
+};
 
-      fetchCatByBreed(selectedBreedId)
-        .then(displayCatInfo)
-        .catch(showError)
-        .finally(hideLoader);
-    });
+const renderCats = cats => {
+  if (cats.length > 0) {
+    const markup = cats
+      .map(
+        cat => `<div class="card-container"><div class="img-container">
+                <img class="cat-img" src="${cat.url}" /></div>
+                <div class="text-container">
+                <h1 class="cat-title">${cat.breeds[0].name}</h1>
+                <p class="cat-desc-sub">${cat.breeds[0].temperament}</p>
+                <p class="cat-desc">${cat.breeds[0].description}</p></div></div>`
+      )
+      .join('');
 
-    hideLoader();
-  })
-  .catch(showError);
+    catInfo.insertAdjacentHTML('afterbegin', markup);
+  } else {
+    Notiflix.Notify.failure(`${errorText.textContent}`);
+  }
+  requestFinish();
+};
+
+const handleFetchError = error => {
+  error = Notiflix.Notify.failure.failure(`${errorText.textContent}`);
+  requestWrong();
+};
+
+const removeChildren = container => {
+  while (container.firstChild) {
+    container.removeChild(container.firstChild);
+  }
+};
+
+const requestStart = () => {
+  loader.classList.remove('visually-hidden');
+  breedSelect.classList.add('visually-hidden');
+  catInfo.classList.add('visually-hidden');
+};
+
+const requestFinish = () => {
+  loader.classList.add('visually-hidden');
+  breedSelect.classList.remove('visually-hidden');
+  catInfo.classList.remove('visually-hidden');
+};
+
+const requestWrong = () => {
+  loader.classList.add('visually-hidden');
+  breedSelect.classList.add('visually-hidden');
+  catInfo.classList.add('visually-hidden');
+};
