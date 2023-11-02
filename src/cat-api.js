@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_KEY =
+const apiKey =
   'live_GWb6wH1mfv0z0RmNdkHnDxRIQKZIuyEwv2W6rhxbclEoPTrLr7qZlvJaDeYyvT10';
 axios.defaults.headers.common['x-api-key'] = apiKey;
 
